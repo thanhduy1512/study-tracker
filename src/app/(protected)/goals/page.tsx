@@ -4,12 +4,16 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
-type Goal = {
+type DBGoal = {
   id: string;
   title: string;
   deadline: string;
   created_by: string;
-  creator_name?: string;
+  profiles?: { full_name?: string }[];
+};
+
+type Goal = DBGoal & {
+  creator_name: string;
 };
 
 export default function GoalsPage() {
@@ -25,10 +29,11 @@ export default function GoalsPage() {
       if (error) {
         console.error('Failed to fetch goals:', error.message);
       } else {
-        const formatted = data.map((g: any) => ({
+        const formatted: Goal[] = data.map((g: DBGoal) => ({
           ...g,
-          creator_name: g.profiles?.full_name ?? 'Unknown',
+          creator_name: g.profiles?.[0]?.full_name ?? 'Unknown',
         }));
+
         setGoals(formatted);
       }
 

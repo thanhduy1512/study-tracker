@@ -4,10 +4,25 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
+export type Task = {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  goal_id?: string;
+  profiles?: { full_name?: string }[]; // ✅ as array
+  task_reactions?: { user_id: string }[];
+};
+
+type FormattedTask = Task & {
+  reacted_by_me: boolean;
+  reactions: number;
+};
+
 export default function GoalDetailPage() {
   const { id } = useParams();
   const [goalTitle, setGoalTitle] = useState('');
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<FormattedTask[]>([]);
   const [newTask, setNewTask] = useState('');
   const [userId, setUserId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -38,6 +53,8 @@ export default function GoalDetailPage() {
   }, [id]);
 
   const fetchTasks = async (goalId: string, currentUserId: string) => {
+    console.log(currentUserId);
+
     const { data, error } = await supabase
       .from('tasks')
       .select(
@@ -45,11 +62,13 @@ export default function GoalDetailPage() {
         id,
         content,
         created_at,
+        goal_id,
         user_id,
-        profiles:profiles(id, full_name),
-        task_reactions:task_reactions!fk_reactions_task(user_id)
+        profiles(full_name),
+        task_reactions(user_id)
       `
       )
+
       .eq('goal_id', goalId)
       .order('created_at', { ascending: false });
 
@@ -58,12 +77,11 @@ export default function GoalDetailPage() {
       return [];
     }
 
-    return data.map((t: any) => ({
+    return data.map((t: Task) => ({
       ...t,
-      reactions: t.task_reactions.length,
-      reacted_by_me: t.task_reactions.some(
-        (r: any) => r.user_id === currentUserId
-      ),
+      reactions: t.task_reactions?.length ?? 0,
+      reacted_by_me:
+        t.task_reactions?.some((r) => r.user_id === userId) ?? false,
     }));
   };
 
@@ -109,7 +127,7 @@ export default function GoalDetailPage() {
         {tasks.map((task) => (
           <li key={task.id} className='p-4 border rounded space-y-1'>
             <div className='text-sm text-gray-500'>
-              {task.profiles?.full_name || 'Unknown'} ·{' '}
+              {task.profiles?.[0]?.full_name || 'Unknown'} ·{' '}
               {new Date(task.created_at).toLocaleString()}
             </div>
             <div>{task.content}</div>

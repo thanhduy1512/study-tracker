@@ -15,7 +15,7 @@ export default function AuthPage() {
     setError('');
     const method = isRegister ? 'signUp' : 'signInWithPassword';
 
-    const { data, error } = await supabase.auth[method]({
+    const { error } = await supabase.auth[method]({
       email,
       password,
     });
