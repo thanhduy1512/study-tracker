@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
@@ -52,38 +52,40 @@ export default function GoalDetailPage() {
     init();
   }, [id]);
 
-  const fetchTasks = async (goalId: string, currentUserId: string) => {
-    console.log(currentUserId);
+  const fetchTasks = useCallback(
+    async (goalId: string, currentUserId: string) => {
+      console.log(currentUserId);
 
-    const { data, error } = await supabase
-      .from('tasks')
-      .select(
-        `
-        id,
-        content,
-        created_at,
-        goal_id,
-        user_id,
-        profiles(full_name),
-        task_reactions(user_id)
-      `
-      )
+      const { data, error } = await supabase
+        .from('tasks')
+        .select(
+          `
+    id,
+    content,
+    created_at,
+    user_id,
+    goal_id,
+    profiles(full_name),
+    task_reactions!task_reactions_task_id_fkey(user_id)
+  `
+        )
+        .eq('goal_id', goalId)
+        .order('created_at', { ascending: false });
 
-      .eq('goal_id', goalId)
-      .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Fetch tasks error:', error);
+        return [];
+      }
 
-    if (error) {
-      console.error('Fetch tasks error:', error);
-      return [];
-    }
-
-    return data.map((t: Task) => ({
-      ...t,
-      reactions: t.task_reactions?.length ?? 0,
-      reacted_by_me:
-        t.task_reactions?.some((r) => r.user_id === userId) ?? false,
-    }));
-  };
+      return data.map((t: Task) => ({
+        ...t,
+        reactions: t.task_reactions?.length ?? 0,
+        reacted_by_me:
+          t.task_reactions?.some((r) => r.user_id === userId) ?? false,
+      }));
+    },
+    [userId]
+  );
 
   const handleAddTask = async () => {
     if (!newTask.trim()) return;
